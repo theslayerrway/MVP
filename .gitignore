@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Secrets (Tier0: never commit)
+.env
+*.key
+credentials*
+
+# OS
+.DS_Store
+
+# Local state
+LESSONS.local.json
