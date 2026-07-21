@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Secrets (Tier0: never commit)
+.env
+*.key
+credentials*
+
+# OS
+.DS_Store
+.directory
+
+# Local assets (not for public repo)
+MVP-poster.png
+MVP-poster.svg
+
+# Local state
+LESSONS.local.json
+ROADMAP.md
