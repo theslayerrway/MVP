@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>evolve-mvp — from chat to product</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; background:#0a0e1a; color:#e6e6e6; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+  header { padding: 22px 26px 14px; border-bottom: 1px solid #1c2438; }
+  h1 { font-size: 19px; letter-spacing: 1px; margin:0; color:#fff; }
+  .sub { color:#7c8db5; font-size: 12px; margin-top:6px; max-width: 720px; line-height:1.5; }
+  .drop { margin: 22px 26px; border: 1.5px dashed #2a3a5e; border-radius: 10px; padding: 34px; text-align:center; color:#7c8db5; transition:.15s; }
+  .drop.hot { border-color:#10b981; color:#10b981; background:#0e1a14; }
+  .drop b { color:#cfe; }
+  .row { display:flex; gap:10px; margin: 0 26px 14px; flex-wrap:wrap; align-items:center; }
+  select, input, button { background:#111827; color:#e6e6e6; border:1px solid #2a3a5e; border-radius:6px; padding:8px 10px; font-family:inherit; font-size:12px; }
+  button { background:#10b981; color:#04130d; border:none; font-weight:bold; cursor:pointer; }
+  button:hover { background:#0fd; }
+  label { font-size:11px; color:#7c8db5; }
+  #term { margin: 8px 26px 30px; background:#05080f; border:1px solid #1c2438; border-radius:8px; padding:16px; height: 460px; overflow-y:auto; font-size:12px; line-height:1.55; white-space:pre-wrap; }
+  .sys { color:#5b6b8c; }
+  .hl { color:#10b981; }
+  .warn { color:#f59e0b; }
+  .you { color:#7aa2ff; }
+  .prompt { color:#fff; }
+  footer { color:#445; font-size:11px; padding: 0 26px 26px; }
+  a { color:#10b981; }
+</style>
+</head>
+<body>
+<header>
+  <h1>EVOLVE-MVP</h1>
+  <div class="sub">Turn any project into a shipped MVP. Self-evolving, regression-gated. Drop a file or .zip — the engine reads it, premorts it, regresses against known failures, and works with you to build. Model-agnostic: run the protocol in Claude, Gemini, Grok, or any AI.</div>
+</header>
+
+<div class="drop" id="drop">
+  <b>Drop a project file or .zip here</b> &nbsp;— or
+  <button id="pick" style="display:inline-block">choose file</button><br>
+  <span style="font-size:11px">Read-only. Nothing leaves your machine unless you paste the output into an AI yourself.</span>
+  <input type="file" id="file" hidden>
+</div>
+
+<div class="row">
+  <label>model backend</label>
+  <select id="adapter">
+    <option value="local">local / paste-anywhere (no key)</option>
+    <option value="claude">Claude</option>
+    <option value="gemini">Gemini</option>
+    <option value="grok">Grok</option>
+    <option value="openai">OpenAI</option>
+  </select>
+  <label>one-line description (optional)</label>
+  <input id="desc" placeholder="what is this project?" style="min-width:240px">
+  <button id="run">▶ RUN PROTOCOL</button>
+</div>
+
+<div id="term"></div>
+
+<footer>
+  evolve-mvp is open source (MIT). <a href="https://github.com/theslayerrway/evolve-mvp">github.com/theslayerrway/evolve-mvp</a> · CLI: <code>pip install evolve-mvp</code> · self-evolving via LESSONS regression log.
+</footer>
+
+<script>
+// Tier0: all processing is client-side. File is read locally, never uploaded.
+const LESSONS = [
+  {mode:"no-single-audience", cause:"Building for everyone at once", fix:"Force ONE clear user before building"},
+  {mode:"scope-creep", cause:"Kitchen-sink syndrome", fix:"Hard scope line; below = post-MVP"},
+  {mode:"perfectionism-paralysis", cause:"Over-analysis, never launches", fix:"Ship viable; polish after signal"},
+  {mode:"sunk-cost", cause:"Continuing dead project for hours spent", fix:"Stop/pivot on dead signal regardless of invested hours"},
+  {mode:"overengineering", cause:"Wrong/complex stack for a bet", fix:"Simplest stack that proves the bet"},
+  {mode:"minimum-over-viable", cause:"Shipping a useless stub", fix:"MVP must prove something real"},
+];
+const GUARDS = [
+  "ONE audience — force a single clear user before building.",
+  "SCOPE LINE hard — below = post-MVP; reject 'just one more feature'.",
+  "DONE > PERFECT — ship viable; polish after signal.",
+  "SUNK COST IS NOT A REASON — if dead, say so; stop or pivot regardless of hours.",
+  "STACK SERVES VALIDATION — simplest stack that proves the bet.",
+  "VIABLE > MINIMUM — must prove something real, not a useless stub.",
+];
+
+const term = document.getElementById('term');
+function log(t, cls='') { term.innerHTML += `<div class="${cls}">${t}</div>`; term.scrollTop = term.scrollHeight; }
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function buildProtocol(name, desc) {
+  return `SYSTEM: You are the evolve-mvp engine. Run the protocol in order. Evidence-based, specific, no fluff.
+
+PHASE 1 — ANALYZE (exhaustive, minimal user input)
+Project: ${name}
+1. Locate: use the file/dir given. Do not ask the user to describe the project.
+2. Map the tree; note present vs absent (no tests/README/entry).
+3. Read signal files if present: README/CLAUDE.md/AGENTS.md/DESIGN*, manifest (package.json/pyproject.toml/Cargo.toml/go.mod/requirements.txt), entry (main/index/app/__main__.py), config (.env.example), git log --oneline -20, core source files.
+4. Infer (do NOT ask to confirm): WHAT IT IS, WHO IT'S FOR, SUCCESS, MATURITY, STACK — from artifacts.
+5. Gap-to-MVP: from present vs absent, what's needed.
+6. Sufficiency gate: only if truly empty ask ONE question.
+
+PHASE 2 — PREMORTEM (kill failures before build)
+Frame: "It's 6 months from now. ${desc||name} failed. Why?"
+Each reason: root cause, early warning, STRUCTURAL fix. Rank by prob x impact. Fatal x Med+ = ship-blocker.
+
+PHASE 3 — REGRESSION (prove the method, not just the project)
+Known failure modes (do not repeat):
+${LESSONS.map(l=>'  - '+l.mode+': '+l.cause+' -> '+l.fix).join('\\n')}
+Check the plan against each; if it repeats a logged failure, apply the fix.
+
+PHASE 4 — ACT (tandem build)
+1. MVP LINE: minimum real value; below = post-MVP.
+2. Next steps as SMALLEST SHIPPABLE CHUNKS; offer to build the first NOW.
+3. THE EDGE: cutting-edge vs standard.
+4. MVP VERIFICATION: exact checks.
+5. Name the BEHAVIORAL GUARD most likely to kill THIS project.
+
+TANDEM MANDATE: do not stop at a plan. Work chunk by chunk until the MVP ships.`;
+}
+
+let currentFile = null;
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('hot'); });
+drop.addEventListener('dragleave', ()=> drop.classList.remove('hot'));
+drop.addEventListener('drop', e=>{
+  e.preventDefault(); drop.classList.remove('hot');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+document.getElementById('pick').onclick = ()=> fileInput.click();
+fileInput.onchange = ()=> { if (fileInput.files[0]) handleFile(fileInput.files[0]); };
+
+function handleFile(f){
+  currentFile = f.name;
+  log(`<span class="you">uploaded:</span> ${esc(f.name)} (${(f.size/1024).toFixed(1)} KB)`, '');
+  log(`<span class="sys">note: this runs client-side. Contents are NOT uploaded. For full analysis, run the CLI on the extracted project, or paste the protocol + files into your AI of choice.</span>`, '');
+}
+
+document.getElementById('run').onclick = ()=>{
+  if (!currentFile) { log('<span class="warn">drop a file first.</span>'); return; }
+  const adapter = document.getElementById('adapter').value;
+  const desc = document.getElementById('desc').value;
+  log('\\n<span class="hl">▶ RUN PROTOCOL</span>  adapter='+adapter+'  file='+esc(currentFile), '');
+  const proto = buildProtocol(currentFile, desc);
+  log('\\n<span class="prompt">'+esc(proto)+'</span>');
+  if (adapter === 'local') {
+    log('\\n<span class="hl">[LOCAL MODE]</span> Copy the protocol above into Claude / Gemini / Grok / ChatGPT. Paste your project files alongside it. The engine is model-agnostic.', '');
+  } else {
+    log('\\n<span class="warn">['+adapter+'] Set '+adapter.toUpperCase()+'_API_KEY in your environment to auto-run. Without it, copy the protocol into that AI.</span>', '');
+  }
+  log('\\n<span class="hl">BEHAVIORAL GUARDS (honor these):</span>');
+  GUARDS.forEach(g=> log('  - '+g, ''));
+};
+</script>
+</body>
+</html>
