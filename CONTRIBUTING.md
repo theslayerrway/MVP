@@ -1,22 +1,36 @@
 # Contributing
 
-evolve-mvp improves through its **regression log**, not just code. Two ways to help:
+## Before contributing
 
-## 1. Extend the failure log (highest value)
-Edit `evolve_mvp/LESSONS.json` (or the `DEFAULT_LESSONS` in `core.py`) with a real
-failure mode you've seen:
-```json
-{"date": "2026-07-19", "mode": "short-id", "cause": "what killed it", "fix": "what prevents it"}
-```
-De-dupe by `mode`. This makes the engine smarter for everyone.
+Open an issue describing the change before writing code.
+This prevents wasted work on contributions that don't align
+with the project's direction.
 
-## 2. Code
+## Scope
+
+- Model-agnostic. No vendor-specific bindings.
+- Regression entries are maintained by the maintainer.
+- Behavioral guards are maintained by the maintainer, not
+  prescribed to contributors.
+
+## Code
+
 - Fork, branch, PR.
-- Python 3.9+. `pip install -e .` to dev.
-- Keep the Tier0 security standard: no secrets in repo, read-only by default, keys from env only.
+- Python 3.9+.
+- Keep test fixtures minimal. One project, concrete output.
 
-## Principles
-- Model-agnostic. No vendor lock-in.
-- Self-evolving via regression, not manual hand-holding.
-- Behavioral guards are non-negotiable (scope/sunk-cost/perfectionism).
-- The product is a shipped MVP, not a document.
+## Review
+
+PRs are reviewed for:
+1. Does it break existing enforcement standards?
+2. Does it introduce a hard gate or a soft suggestion?
+3. Does it keep the four-phase protocol intact?
+
+PRs that don't align are closed with a specific reason.
+Contributors are encouraged to open an issue to discuss
+before resubmitting.
+
+## Security
+
+Report vulnerabilities to `theslayerrway@users.noreply.github.com`.
+Do not open public issues for security problems.

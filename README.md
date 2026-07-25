@@ -1,10 +1,26 @@
-# MVP
+# M.V.P.
 
-**Author:** [@theslayerrway](https://github.com/theslayerrway) · **License:** MIT (see LICENSE for copyright holder)
+**Author:** [@theslayerrway](https://github.com/theslayerrway) · **License:** MIT
 
-> I just want to help people realize their dreams. However I see a lot get lost in the pursuit of trying to create. I believe this tool will help you no matter where you are, to finally get from chat to product. Analyze any project. Utilize M.V.P — analyze → premortem → regression → actionable M.V.P steps → Tandem to M.V.P
+> I just want to help people realize their dreams. However I see a lot 
+> get lost in the pursuit of trying to create. I believe this tool will 
+> help you no matter where you are, to finally get from chat to product.
 
-MVP turns any project into a shipped MVP — and gets smarter from every run.
+M.V.P. turns any project into a shipped product — and gets smarter 
+from every run.
+
+Analyze. Premortem. Regression. Act. Tandem to ship.
+
+## What it does
+
+Fixed four-phase protocol:
+
+1. **Analyze** — map current state vs. MVP
+2. **Premortem** — generate failure modes, verify with maker-checker
+3. **Regression** — check plan against past failures
+4. **Act** — tandem build, smallest shippable version
+
+Every phase has a mandatory human checkpoint.
 
 ## Use it
 
@@ -17,11 +33,12 @@ mvp-cli /path/to/your/project
 **Web**
 Open `index.html`. Drop a file or `.zip`. Client-side only.
 
-**GitHub**
-Clone, extend, PR. The `LESSONS` regression log is the heart of the tool.
+## Model support
 
-## Model-agnostic
-Plain instructions. Adapters for Claude, Gemini, Grok, OpenAI, and local models.
+Works with Claude, Gemini, Grok, OpenAI, and local models.
 
-## License
-MIT. See LICENSE.
+## Outputs
+
+- `mvp-report-[timestamp].html` — visual report
+- `mvp-transcript-[timestamp].md` — full transcript
+- `LESSONS.json` — self-evolving regression log
