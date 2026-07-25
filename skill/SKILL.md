@@ -1,6 +1,7 @@
 ---
 name: mvp-protocol
 description: "Run the MVP protocol (analyze → premortem → regression → act) on any project or idea to ship a viable product without scope-creep, overengineering, or paralysis. Includes self-evolving regression log and model-agnostic HTML fallback."
+version: 4.0.1
 mandatory_triggers:
   - "mvp this"
   - "mvp this:"
