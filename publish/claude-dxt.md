@@ -25,7 +25,7 @@ The manifest:
   "version": "0.1.0",
   "description": "Analyze -> premortem -> regression -> act. Self-evolving MVP methodology.",
   "author": { "name": "theslayerrway", "url": "https://github.com/theslayerrway/MVP" },
-  "license": "MIT",
+  "license": "Apache-2.0",
   "tools": [],
   "prompts": [
     { "name": "mvp", "description": "Run the MVP protocol on a project",

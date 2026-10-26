@@ -1,20 +1,20 @@
 MVP — Trademark & Proprietary Notice
 =====================================
 
-Copyright (c) 2026 Austin Taylor Cottrell. All rights reserved.
+Copyright (c) 2026 theslayerrway. All rights reserved.
 
-The software in this repository is licensed under the MIT License (see LICENSE).
-The MIT License covers the code only.
+The software in this repository is licensed under the Apache License, Version 2.0 (see LICENSE).
+The Apache License covers the code only.
 
-The following are proprietary trademarks of Austin Taylor Cottrell and are
+The following are proprietary trademarks of theslayerrway and are
 reserved for trademark registration:
 
   - "MVP" (the methodology, framework, and product name)
   - "Tier0" (the underlying security/architecture methodology)
 
-The methodology, name, and brand are NOT licensed under MIT and are not
+The methodology, name, and brand are NOT licensed under the Apache License and are not
 part of the public domain. Use of the name "MVP" or "Tier0" in connection
 with commercial products or services requires written permission.
 
 The code may be used, modified, and redistributed under the terms of the
-MIT License. The trademarks may not.
+Apache License, Version 2.0. The trademarks may not.

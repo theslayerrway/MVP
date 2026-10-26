@@ -257,6 +257,6 @@ The skill includes `.github/workflows/skill-test.yml` that runs the protocol on 
 
 ## License
 
-MIT. Author: theslayerrway (@theslayerrway). "MVP" and "Tier0" are trademarks — see NOTICE.
+Apache 2.0. Author: theslayerrway (@theslayerrway). "MVP" and "Tier0" are trademarks — see NOTICE.
 
 Repo: https://github.com/theslayerrway/MVP
