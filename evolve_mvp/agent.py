@@ -2,9 +2,12 @@ import datetime
 import difflib
 import json
 import os
+import re
+import signal
 import subprocess
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -15,13 +18,14 @@ STEPS = int(os.environ.get("MVP_MAX_STEPS", "30"))
 BUDGET = int(os.environ.get("MVP_MAX_TOKENS", "0"))
 CLIP = 8000
 DENIED = "The user denied this action."
-LOCAL = ["http://127.0.0.1:8080/v1", "http://127.0.0.1:11434/v1"]
-PROVIDERS = {
-    "claude": ("ANTHROPIC_API_KEY", "https://api.anthropic.com/v1", "claude-sonnet-5-5"),
-    "grok": ("XAI_API_KEY", "https://api.x.ai/v1", ""),
-    "openai": ("OPENAI_API_KEY", "https://api.openai.com/v1", ""),
-    "gemini": ("GEMINI_API_KEY", "https://generativelanguage.googleapis.com/v1beta/openai", ""),
-}
+LOCAL = [f"http://127.0.0.1:{port}/v1" for port in (8080, 11434, 8000, 5001, 1234)]
+SECRET = re.compile(r"^\.|\.(pem|key|p12|pfx)$|^id_|secret|credential", re.I)
+CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
+HIDDEN_ENV = re.compile(r"KEY|TOKEN|SECRET|PASSWORD", re.I)
+
+
+def show(*parts):
+    print(CTRL.sub("", " ".join(str(p) for p in parts)))
 
 
 def spec(name, desc, **params):
@@ -104,25 +108,21 @@ def anthropic_messages(messages):
 
 class Model:
     def __init__(self):
-        name = os.environ.get("MVP_PROVIDER", "").lower()
-        self.kind = "anthropic" if name == "claude" else "openai"
-        self.base = os.environ.get("MVP_BASE_URL", "").rstrip("/")
-        self.model = os.environ.get("MVP_MODEL", "")
+        self.kind = "openai"
         self.key = os.environ.get("MVP_API_KEY", "")
-        if name in PROVIDERS:
-            env, base, model = PROVIDERS[name]
-            self.key, self.base, self.model = self.key or os.environ.get(env, ""), self.base or base, self.model or model
-            if not self.key:
-                raise SystemExit(f"set {env} to use {name}")
-            if not self.model:
-                raise SystemExit(f"set MVP_MODEL to the {name} model you want")
-        elif not self.base:
-            self.base = next((u for u in LOCAL if self.models(u)), "")
-            if not self.base:
-                raise SystemExit("no local model server on :8080 or :11434. Start llama-server or ollama, "
-                                 "or set MVP_PROVIDER to claude, grok, openai or gemini.")
-        if not self.model:
+        self.model = os.environ.get("MVP_MODEL", "")
+        self.base = os.environ.get("MVP_BASE_URL", "").rstrip("/") or next((u for u in LOCAL if self.models(u)), "")
+        if not self.base:
+            raise SystemExit("No model server found. Set MVP_BASE_URL.")
+        host = urllib.parse.urlparse(self.base).hostname or ""
+        if self.key and self.base.startswith("http://") and host not in ("127.0.0.1", "localhost", "::1"):
+            raise SystemExit("MVP_API_KEY is only sent over https.")
+        if host == "api.anthropic.com":
+            self.kind = "anthropic"
+        if not self.model and not self.key:
             self.model = (self.models(self.base) or [""])[0]
+        if not self.model:
+            raise SystemExit("Set MVP_MODEL.")
 
     def headers(self):
         if self.kind == "anthropic":
@@ -182,17 +182,23 @@ class Agent:
     def ok(self, kind, what):
         if kind in self.always:
             return True
+        options = "[y/N]" if kind == "run_shell" else "[y/N, a = always this session]"
         try:
-            answer = input(f"  allow {what}? [y/N, a = always this session] ").strip().lower()
+            answer = input(f"  allow {what}? {options} ").strip().lower()
         except EOFError:
             return False
-        if answer == "a":
+        if answer == "a" and kind != "run_shell":
             self.always.add(kind)
-        return answer in ("y", "yes", "a")
+            return True
+        return answer in ("y", "yes")
 
     def inside(self, path):
         p = (self.root / Path(path).expanduser()).resolve()
-        if any(d == p or d in p.parents for d in [self.root, *self.extra]):
+        if p == self.root or self.root in p.parents:
+            if any(SECRET.search(part) for part in p.relative_to(self.root).parts):
+                raise PermissionError(f"{path} is off limits")
+            return p
+        if any(d == p or d in p.parents for d in self.extra):
             return p
         raise PermissionError(f"{path} is outside the project")
 
@@ -205,7 +211,7 @@ class Agent:
         tools = [TOOLS[n] for n in names]
         for _ in range(STEPS):
             if BUDGET and self.tokens >= BUDGET:
-                print(f"[token budget of {BUDGET} reached]")
+                show(f"[token budget of {BUDGET} reached]")
                 break
             msg, used = self.model.chat(self.messages, tools)
             self.tokens += used
@@ -223,7 +229,7 @@ class Agent:
             self.messages.append(entry)
             self.log("assistant", content=content, tool_calls=calls, tokens=used)
             if content:
-                print("\n" + content)
+                show("\n" + content)
             if not calls:
                 break
             for c in calls:
@@ -232,8 +238,8 @@ class Agent:
                 self.messages.append({"role": "tool", "tool_call_id": c["id"], "content": result})
                 self.log("tool", name=c["function"]["name"], args=args, result=result)
         else:
-            print(f"[stopped after {STEPS} steps]")
-        print(f"[{self.tokens} tokens so far]")
+            show(f"[stopped after {STEPS} steps]")
+        show(f"[{self.tokens} tokens so far]")
         self.save()
 
     def run(self, name, args, allowed):
@@ -248,26 +254,33 @@ class Agent:
     def tool_list_files(self, a):
         base = self.inside(a.get("path") or ".")
         files = [str(p.relative_to(self.root)) for p in sorted(base.rglob("*"))
-                 if p.is_file() and not any(s.startswith(".") for s in p.relative_to(self.root).parts)]
+                 if p.is_file() and not any(SECRET.search(s) for s in p.relative_to(self.root).parts)]
         return "\n".join(files[:400]) + (f"\n...{len(files) - 400} more" if len(files) > 400 else "")
 
     def tool_read_file(self, a):
         p = self.inside(a["path"])
-        print(f"  read {a['path']}")
+        show("  read", a["path"])
         return p.read_text(encoding="utf-8", errors="replace")
 
     def tool_run_shell(self, a):
-        print(f"  $ {a['command']}")
+        show("  $", a["command"])
         if not self.ok("run_shell", "this command"):
             return DENIED
-        r = subprocess.run(a["command"], shell=True, cwd=self.root, capture_output=True, text=True, timeout=300)
-        return f"exit {r.returncode}\n{r.stdout}{r.stderr}"
+        env = {k: v for k, v in os.environ.items() if not HIDDEN_ENV.search(k)}
+        p = subprocess.Popen(a["command"], shell=True, cwd=self.root, env=env, text=True, start_new_session=True,
+                             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        try:
+            out = p.communicate(timeout=300)[0]
+        except subprocess.TimeoutExpired:
+            os.killpg(p.pid, signal.SIGKILL)
+            out = p.communicate()[0] + "\n[killed after 300s]"
+        return f"exit {p.returncode}\n{out}"
 
     def tool_write_file(self, a):
         p = self.inside(a["path"])
         old = p.read_text(encoding="utf-8", errors="replace") if p.exists() else ""
         diff = "".join(difflib.unified_diff(old.splitlines(True), a["content"].splitlines(True), a["path"], a["path"]))
-        print(diff[:6000] or f"  {a['path']} unchanged")
+        show(diff[:6000] or f"  {a['path']} unchanged")
         if not self.ok("write_file", f"writing {a['path']}"):
             return DENIED
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -275,7 +288,7 @@ class Agent:
         return f"wrote {a['path']}"
 
     def tool_propose_lesson(self, a):
-        print(f"  lesson {a['mode']}: {a['cause']} -> {a['fix']}")
+        show(f"  lesson {a['mode']}: {a['cause']} -> {a['fix']}")
         if not self.ok("propose_lesson", "this lesson"):
             return DENIED
         entry = {"date": datetime.date.today().isoformat(), "mode": a["mode"], "cause": a["cause"], "fix": a["fix"]}
@@ -284,7 +297,7 @@ class Agent:
         return "saved to LESSONS.json"
 
     def tool_remember(self, a):
-        print(f"  remember: {a['text']}")
+        show("  remember:", a["text"])
         if not self.ok("remember", "saving this"):
             return DENIED
         HOME.mkdir(parents=True, exist_ok=True)
