@@ -11,6 +11,6 @@ setup(
     packages=find_packages(),
     python_requires=">=3.9",
     entry_points={"console_scripts": ["evolve-mvp=evolve_mvp.cli:main"]},
-    license="MIT",
+    license="Apache-2.0",
     keywords="mvp, ai, methodology, agent, product, lean-startup, premortem",
 )

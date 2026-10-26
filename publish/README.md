@@ -29,5 +29,5 @@ The protocol is plain text. The same instructions drop into any frontend AI. No 
 - `kimi-assistant.md` — Kimi assistant
 
 Author: theslayerrway
-License: MIT. Name "MVP" and "Tier0" are trademarks — see NOTICE.
+License: Apache 2.0. Name "MVP" and "Tier0" are trademarks — see NOTICE.
 Repo: https://github.com/theslayerrway/MVP

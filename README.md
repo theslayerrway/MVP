@@ -1,6 +1,6 @@
 # M.V.P.
 
-**Author:** [@theslayerrway](https://github.com/theslayerrway) · **License:** MIT
+**Author:** [@theslayerrway](https://github.com/theslayerrway) · **License:** Apache 2.0
 
 > I just want to help people realize their dreams. However I see a lot 
 > get lost in the pursuit of trying to create. I believe this tool will 
